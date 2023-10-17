@@ -123,7 +123,7 @@ function makeCsv() {
         let csvData = "\uFEFF";
         const fields = [];
         metadataFieldNames.split(',').forEach( (f) => {
-          fields.push('metadata_'+f);
+          fields.push('metadataField_'+f);
         })
         csvData = headerLine + "," + fields.join(',') + "\n";
         console.log(files);
