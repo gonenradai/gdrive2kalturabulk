@@ -2,6 +2,7 @@
 <head>
   <meta charset="UTF-8">
   <script src="https://apis.google.com/js/client.js"></script>
+  <script src="utils.js"></script>
 <script>
 let api_key = null;
 function setApiKey() {
@@ -11,26 +12,6 @@ function setApiKey() {
   document.getElementById('api_key_field').classList.add('hidden');
 }
 
-
-function downloadCSV(content, fileName) {
-  // Create a Blob containing the CSV data
-  const blob = new Blob([content], { type: 'text/csv' });
-
-  // Create a URL for the Blob
-  const url = URL.createObjectURL(blob);
-
-  // Create a link element to trigger the download
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = fileName || 'download.csv';
-
-  // Trigger the download by clicking the link
-  a.click();
-
-  // Clean up by revoking the URL
-  URL.revokeObjectURL(url);
-}
-
 async function callApi(query) {
   const result = await fetch('https://www.googleapis.com/drive/v3/files?key='+api_key+'&pageSize=200&q='+query+'&fields=files(id, name, mimeType, owners, description, kind, fileExtension, fileExtension)');
   const jsonRes = await result.json();
@@ -38,9 +19,6 @@ async function callApi(query) {
 }
 
 const files = [];
-function capitalizeFLetter(word) {
-    return word[0].toUpperCase() + word.slice(1);
-}
 const runs = [];
 
 async function getDriveFiles(driveId, driveName, folderName, categoryName, metadataProfileId, ownerId, folderPath = '') {
@@ -85,26 +63,7 @@ async function getDriveFiles(driveId, driveName, folderName, categoryName, metad
     return btoa(unescape(encodeURIComponent(folderPath)));
   })
 }
-// Helper function to escape double-quotes within a string
-function escapeDoubleQuotes(str) {
-  return str.replace(/"/g, '""');
-}
 
-function arrayToCSVLine(array) {
-
-  // Create an array of CSV-safe values
-  const csvValues = array.map((value) => {
-    if (typeof value === 'string' && (value.includes(',') || value.includes("\n"))) {
-      // Wrap the value in double-quotes and escape any double-quotes within it
-      return `"${escapeDoubleQuotes(value)}"`;
-    } else {
-      return value;
-    }
-  });
-
-  // Join the CSV-safe values with commas
-  return csvValues.join(',');
-}
 let inter;
 function makeCsv() {
   const driveId = document.getElementById('drive_id').value;

@@ -1,0 +1,92 @@
+<html>
+
+<head>
+  <script src="utils.js"></script>
+  <script>
+    function makeCsv() {
+      const driveName = document.getElementById('drive_name').value;
+      const rootCategory = document.getElementById('root_category').value;
+      const metadataProfileId = document.getElementById('metadata_profile_id').value;
+      const ownerId = document.getElementById('owner_id').value;
+      const metadataFieldNames = document.getElementById('metadata_fields').value;
+      const fieldsCount = metadataFieldNames.split(',').length;
+
+      const headerLine = "*title,description,tags,url,contentType,category,creatorId,ownerId,metadataProfileId";
+      let csvData = "\uFEFF";
+      const fields = [];
+      metadataFieldNames.split(',').forEach( (f) => {
+        fields.push('metadataField_'+f);
+      })
+      csvData = headerLine + "," + fields.join(',') + "\n";
+      // TODO add lines from textarea - read line, break by comma, add to expected format, and serve
+
+      const data = document.getElementById('csv').value;
+      const lines = data.split("\n");
+      lines.forEach( (line) => {
+        lineData = line.split(',');
+        mimeType = lineData[1];
+        if (mimeType.indexOf('image/') > -1 || mimeType.indexOf('audio/') > -1 || mimeType.indexOf('video/') > -1 ) {
+          const item = [
+            lineData[0],
+            "",
+            "",
+            "https://drive.google.com/uc?export=download&id="+lineData[2],
+            capitalizeFLetter(mimeType.split('/')[0]),
+            `${rootCategory}>site>channels>${driveName}`,
+            ownerId,
+            ownerId,
+            metadataProfileId
+          ];
+          for(i=0;i<fieldsCount;i++) {
+            item.push("");
+          }
+          csvData += arrayToCSVLine(item) + "\n";
+        }
+      })
+      downloadCSV(csvData, 'bulk_upload.csv');
+    }
+  </script>
+</head>
+
+<body>
+  <div>
+    Take the following code snippet and paste it in chrome developer toolbar "console" tab and run it (press Enter)
+    <pre>
+      var csv = "";
+      AF_initDataChunkQueue[7].data[4].forEach( (file) => { csv += file[2]+","+file[3]+","+file[0]+"\n"; } );
+      console.log(csv);
+    </pre>
+    Then paste the result below to get a CSV.
+  </div>
+  <div>
+    <div>
+      <div>
+        <label for="drive_name">Drive Name (used as category name prefix)</label>
+        <input type="text" id="drive_name" name="drive_name" />
+      </div>
+      <div>
+        <label for="root_category">Kms root category name</label>
+        <input type="text" id="root_category" name="root_category" />
+      </div>
+      <div>
+        <label for="owner_id">Owner user ID</label>
+        <input type="text" id="owner_id" name="owner_id" />
+      </div>
+      <div>
+        <label for="metadata_profile_id">Metadata Profile ID</label>
+        <input type="text" id="metadata_profile_id" name="metadata_profile_id" />
+      </div>
+      <div>
+        <label for="metadata_fields">Metadata Field Names - comma separated without spaces</label>
+        <input type="text" id="metadata_fields" name="metadata_fields" />
+      </div>
+      <div>
+        <label for="console_output">Console output</label>
+        <textarea id="csv" rows="60" cols="100"></textarea>
+      </div>
+      <button onclick="makeCsv()">Get CSV</button>
+    </div>
+  </div>
+</body>
+
+</html>
