@@ -1,0 +1,202 @@
+<html>
+<head>
+  <meta charset="UTF-8">
+  <script src="https://apis.google.com/js/client.js"></script>
+<script>
+let api_key = null;
+function setApiKey() {
+  api_key = document.getElementById('api_key').value;
+  window.sessionStorage.setItem('apikey', api_key);
+  document.getElementById('drive_details_fields').classList.remove('hidden');
+  document.getElementById('api_key_field').classList.add('hidden');
+}
+
+
+function downloadCSV(content, fileName) {
+  // Create a Blob containing the CSV data
+  const blob = new Blob([content], { type: 'text/csv' });
+
+  // Create a URL for the Blob
+  const url = URL.createObjectURL(blob);
+
+  // Create a link element to trigger the download
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName || 'download.csv';
+
+  // Trigger the download by clicking the link
+  a.click();
+
+  // Clean up by revoking the URL
+  URL.revokeObjectURL(url);
+}
+
+async function callApi(query) {
+  const result = await fetch('https://www.googleapis.com/drive/v3/files?key='+api_key+'&pageSize=200&q='+query+'&fields=files(id, name, mimeType, owners, description, kind, fileExtension, fileExtension)');
+  const jsonRes = await result.json();
+  return jsonRes.files;
+}
+
+const files = [];
+function capitalizeFLetter(word) {
+    return word[0].toUpperCase() + word.slice(1);
+}
+const runs = [];
+
+async function getDriveFiles(driveId, driveName, folderName, categoryName, metadataProfileId, ownerId, folderPath = '') {
+  const query = `'${driveId}' in parents`;
+  const localfiles = await callApi(query);
+  localfiles.forEach( (file) => {
+    const mimeType = file.mimeType;
+    const fileId = file.id;
+    const fileName = file.name;
+
+    if (mimeType == 'application/vnd.google-apps.folder') {
+      const new_folder_path = `${folderPath} - ${fileName}`;
+      const key = btoa(unescape(encodeURIComponent(new_folder_path)));
+      runs.push(key);
+      getDriveFiles(fileId, driveName, fileName, categoryName, metadataProfileId, new_folder_path).then( (res) => {
+        console.log(res);
+        const index = runs.indexOf(res);
+        runs.splice(index, 1);
+        console.log("files has "+files.length);
+      });
+    } else if (mimeType.indexOf('image/') > -1 || mimeType.indexOf('audio/') > -1 || mimeType.indexOf('video/') > -1 ) {
+      // console.log(`processing file ${fileName} in ${folderName}`);
+      const media_type = capitalizeFLetter(mimeType.split('/')[0]);
+      const user_name = file.owners[0].displayName;
+      const user_email = file.owners[0].emailAddress;
+      const file_extension = file.fileExtension?? '';
+      const description = file.description?? '';
+      const download_url = `https://drive.google.com/uc?export=download&id=${fileId}`;
+      files.push([
+        fileName,
+        `By ${user_name} in ${folderName}. \n${description}`,
+        "",
+        download_url,
+        media_type,
+        `${categoryName}>${driveName} ${folderPath}`,
+        user_email,
+        ownerId,
+        metadataProfileId,
+        // metadata fields here... TODO
+      ]);
+    }
+    return btoa(unescape(encodeURIComponent(folderPath)));
+  })
+}
+// Helper function to escape double-quotes within a string
+function escapeDoubleQuotes(str) {
+  return str.replace(/"/g, '""');
+}
+
+function arrayToCSVLine(array) {
+
+  // Create an array of CSV-safe values
+  const csvValues = array.map((value) => {
+    if (typeof value === 'string' && (value.includes(',') || value.includes("\n"))) {
+      // Wrap the value in double-quotes and escape any double-quotes within it
+      return `"${escapeDoubleQuotes(value)}"`;
+    } else {
+      return value;
+    }
+  });
+
+  // Join the CSV-safe values with commas
+  return csvValues.join(',');
+}
+let inter;
+function makeCsv() {
+  const driveId = document.getElementById('drive_id').value;
+  const driveName = document.getElementById('drive_name').value;
+  const rootCategory = document.getElementById('root_category').value;
+  const metadataProfileId = document.getElementById('metadata_profile_id').value;
+  const ownerId = document.getElementById('owner_id').value;
+  const metadataFieldNames = document.getElementById('metadata_fields').value;
+  const fieldsCount = metadataFieldNames.split(',').length;
+
+  getDriveFiles(driveId, driveName, "", rootCategory+">site>channels", metadataProfileId, ownerId, "").then( (res) => {
+    inter = setInterval(() => {
+      if(runs.length === 0) {
+        clearInterval(inter);
+        const headerLine = "*title,description,tags,url,contentType,category,creatorId,ownerId,metadataProfileId";
+        let csvData = "\uFEFF";
+        const fields = [];
+        metadataFieldNames.split(',').forEach( (f) => {
+          fields.push('metadata_'+f);
+        })
+        csvData = headerLine + "," + fields.join(',') + "\n";
+        console.log(files);
+        files.forEach( (f) => {
+          csvData += arrayToCSVLine(f);
+          for(i=0;i<fieldsCount;i++) {
+            csvData += ',';
+          }
+          csvData += "\n";
+        })
+        downloadCSV(csvData, 'bulk_upload.csv');
+      }
+    }, 1000);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  if(window.sessionStorage.getItem('apikey')) {
+    document.getElementById('api_key').value = window.sessionStorage.getItem('apikey');
+  }
+})
+</script>
+<style>
+  .hidden { display: none;}
+</style>
+</head>
+
+<body>
+  <div class="instructions">
+    To use this you need a google API key. To get that:
+  <ul>
+    <li>Go to the Google Cloud Console (https://console.cloud.google.com/).</li>
+    <li>if you don't have any project, create a new one (details do not matter)</li>
+    <li>in the project, navigate to "APIs & Services"</li>
+    <li>move to "credentials" tab (appears in left navigation sidebar)</li>
+    <li>click "+ create credentials" and select "API Key"</li>
+    <li>copy the resulted API key</li>
+  </ul>
+  <div>
+    the API key will be stored in local storage for easy re-use in subsequent drive scans.<br /><br />
+  </div>
+  </div>
+  <div id="api_key_field">
+    <label for="api_key">API Key</label>
+    <input name="api_key" id="api_key" type="text" />
+    <button onclick="setApiKey()">Init</button>
+  </div>
+  <div id="drive_details_fields" class="hidden">
+    <div>
+      <label for="drive_id">Drive ID</label>
+      <input type="text" id="drive_id" name="drive_id" />
+    </div>
+    <div>
+      <label for="drive_name">Drive Name (used as category name prefix)</label>
+      <input type="text" id="drive_name" name="drive_name" />
+    </div>
+    <div>
+      <label for="root_category">Kms root category name</label>
+      <input type="text" id="root_category" name="root_category" />
+    </div>
+    <div>
+      <label for="owner_id">Owner user ID</label>
+      <input type="text" id="owner_id" name="owner_id" />
+    </div>
+    <div>
+      <label for="metadata_profile_id">Metadata Profile ID</label>
+      <input type="text" id="metadata_profile_id" name="metadata_profile_id" />
+    </div>
+    <div>
+      <label for="metadata_fields">Metadata Field Names - comma separated without spaces</label>
+      <input type="text" id="metadata_fields" name="metadata_fields" />
+    </div>
+    <button onclick="makeCsv()">Get CSV</button>
+  </div>
+</body>
+</html>
