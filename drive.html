@@ -24,6 +24,7 @@
       const lines = data.split("\n");
       lines.forEach( (line) => {
         lineData = line.split(',');
+        if(lineData.length !== 3) return;
         mimeType = lineData[1];
         if (mimeType.indexOf('image/') > -1 || mimeType.indexOf('audio/') > -1 || mimeType.indexOf('video/') > -1 ) {
           const item = [
