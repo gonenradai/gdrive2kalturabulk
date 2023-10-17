@@ -119,6 +119,10 @@ function makeCsv() {
     inter = setInterval(() => {
       if(runs.length === 0) {
         clearInterval(inter);
+        if(files.length === 0) {
+          alert("could not list files");
+          return;
+        }
         const headerLine = "*title,description,tags,url,contentType,category,creatorId,ownerId,metadataProfileId";
         let csvData = "\uFEFF";
         const fields = [];
