@@ -13,7 +13,7 @@ function setApiKey() {
 }
 
 async function callApi(query) {
-  const result = await fetch('https://www.googleapis.com/drive/v3/files?key='+api_key+'&pageSize=200&q='+query+'&fields=files(id, name, mimeType, owners, description, kind, fileExtension, fileExtension)');
+  const result = await fetch('https://www.googleapis.com/drive/v3/files?key='+api_key+'&pageSize=1000&q='+query+'&fields=files(id, name, mimeType, owners, description, kind, fileExtension, fileExtension)');
   const jsonRes = await result.json();
   return jsonRes.files;
 }
@@ -52,6 +52,7 @@ async function getDriveFiles(driveId, driveName, folderName, categoryName, metad
         `By ${user_name} in ${folderName}. \n${description}`,
         "",
         download_url,
+        fileId,
         media_type,
         `${categoryName}>${driveName} ${folderPath}`,
         user_email,
@@ -82,7 +83,7 @@ function makeCsv() {
           alert("could not list files");
           return;
         }
-        const headerLine = "*title,description,tags,url,contentType,category,creatorId,ownerId,metadataProfileId";
+        const headerLine = "*title,description,tags,url,referenceId,contentType,category,creatorId,ownerId,metadataProfileId";
         let csvData = "\uFEFF";
         const fields = [];
         metadataFieldNames.split(',').forEach( (f) => {
