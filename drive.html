@@ -11,7 +11,7 @@
       const metadataFieldNames = document.getElementById('metadata_fields').value;
       const fieldsCount = metadataFieldNames.split(',').length;
 
-      const headerLine = "*title,description,tags,url,contentType,category,creatorId,ownerId,metadataProfileId";
+      const headerLine = "*title,description,tags,url,referenceId,contentType,category,creatorId,ownerId,metadataProfileId";
       let csvData = "\uFEFF";
       const fields = [];
       metadataFieldNames.split(',').forEach( (f) => {
@@ -32,6 +32,7 @@
             "",
             "",
             "https://drive.google.com/uc?export=download&id="+lineData[2],
+            lineData[2],
             capitalizeFLetter(mimeType.split('/')[0]),
             `${rootCategory}>site>channels>${driveName}`,
             ownerId,
