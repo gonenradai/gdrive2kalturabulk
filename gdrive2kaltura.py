@@ -138,7 +138,7 @@ def list_files(folder_id, folder_name, spinner, folder_path=''):
         elif mime_type.startswith(('image/', 'video/', 'audio/')):
             spinner.text = f'Processing {file_name} ({mime_type}) in folder {folder_path or "/"}'
             if(check_file_imported(file_id)):
-                print(f'skipping {file_id} because exists')
+                # print(f'skipping {file_id} because exists')
                 continue
             media_type = mime_type.split('/')[0]  # Extracts "audio", "video", or "image" from mime_type
             user_name = item['owners'][0]['displayName']
@@ -160,6 +160,18 @@ def list_files(folder_id, folder_name, spinner, folder_path=''):
             }
             rows_list.append(row_dict)
 
+def upload_bulk():
+    config = KalturaConfiguration()
+    config.serviceUrl = "https://www.kaltura.com/"
+    ks = KalturaClient.generateSessionV2(admin_secret, "test", 
+                                             KalturaSessionType.ADMIN, partner_id, 
+                                             86400, "disableentitlement")
+    client = KalturaClient(config)
+    client.setKs(ks)
+
+    fileData = "./kaltura_upload.csv"
+    result = client.media.bulkUploadAdd(open(fileData, 'rb'))
+
 def main(folder_id):
     """
     Main function to process files from a Google Drive folder and save them in a CSV file.
@@ -176,6 +188,10 @@ def main(folder_id):
         spinner.succeed('Processing completed')
         df = pd.DataFrame(rows_list)
         df.to_csv('kaltura_upload.csv', index=False, encoding='utf-8-sig')
+        if(len(rows_list) > 0):
+            upload_bulk()
+        else:
+            print("Nothing to bulk upload")
 
 if __name__ == "__main__":
     # Argument parsing to get folder_id and root_category_name from command line
