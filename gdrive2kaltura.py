@@ -236,7 +236,7 @@ def download_thread(creds):
             continue
 
         # if object isn't on s3, download from drive and upload to s3
-        object_name = f"{folder_id}/{file_name}"
+        object_name = f"{folder_id}/{file_id}"
         if args.folder_id != folder_id:
             object_name = f"{args.folder_id}/{object_name}"
 
@@ -463,6 +463,7 @@ def check_file_imported(file_id):
 
 
 def upload_bulk(csv_file_name):
+    #sys.exit(0)
     config = KalturaConfiguration()
     config.serviceUrl = "https://www.kaltura.com/"
     ks = KalturaClient.generateSessionV2(admin_secret, "test",
