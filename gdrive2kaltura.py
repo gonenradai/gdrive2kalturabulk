@@ -272,14 +272,18 @@ def download_thread(creds):
         folder_path = item['folder_path']
         mime_type = gitem['mimeType']
         media_type = mime_type.split('/')[0]  # Extracts "audio", "video", or "image" from mime_type
-        user_name = gitem['owners'][0]['displayName']
-        user_email = gitem['owners'][0]['emailAddress']
+        user_name = ''
+        user_email = ''
+        if 'owners' in gitem and len(gitem['owners']):
+            user_name = gitem['owners'][0]['displayName']
+            user_email = gitem['owners'][0]['emailAddress']
         file_extension = gitem.get('fileExtension', '')
         description = gitem.get('description', '')
         #download_url = f'https://drive.google.com/uc?export=download&id={file_id}'
         download_url = f'https://stand4israel-content-bucket.s3.amazonaws.com/{object_name}'
+        print(f"ADD {file_id} {download_url} {file_name}")
         row_dict = {
-            '*title': file_name,
+            '*title': file_name.lstrip('#'),
             'description': f'By {user_name} in {folder_name}. \n{description}',
             'tags': '',
             'url': download_url,
@@ -392,7 +396,7 @@ def list_folder(creds):
 
         try:
             # Call the Drive v3 API
-            results = service.files().list(q=query,
+            results = service.files().list(supportsAllDrives=True, includeItemsFromAllDrives=True, q=query,
                 fields="nextPageToken, files(id, name, mimeType, owners, description, size, kind, fileExtension, fileExtension, capabilities/canListChildren, capabilities/canDownload, shortcutDetails)",
                 pageToken = next_page_token,
                 pageSize = 1000).execute()
@@ -409,8 +413,6 @@ def list_folder(creds):
                     print("PROCESS ",item['size'],item['id'],item['name'])
                     safe_append(lock, files, {'gitem': item, 'folder_id': folder_id, 'folder_name': folder_name, 'folder_path': folder_path}) #'id': item['id'], 'name' : item['name']})
 
-            new_folder_path = f'{folder_path} - {item["name"]}'
-
             for item in items:
                 new_id = False
                 if item['capabilities']['canListChildren']:
@@ -419,6 +421,7 @@ def list_folder(creds):
                     new_id = item['shortcutDetails']['targetId']
 
                 if new_id:
+                    new_folder_path = f'{folder_path} - {item["name"]}'
                     safe_append(lock, folders, {'id': new_id, 'name': folder_name, 'path': new_folder_path})
 
                 print(u'FILE {2} {1} {0}'.format(item['name'], item['id'], item['size'] if 'size' in item else 0))
@@ -488,6 +491,7 @@ if __name__ == '__main__':
     parser.add_argument('admin_secret', help='admin secret for the partner ID')
     parser.add_argument('root_category_name', nargs='?', default='', help='If provided, will be appended to all categories as the root in the Kaltura CSV')
     parser.add_argument('metadata_profile_id', nargs='?', default='', help='If provided, will be set as the metadata profile ID')
+    parser.add_argument('google_credentials', nargs='?', default='', help='If provided, google credentials will be read for this file')
 
     args = parser.parse_args()
 
@@ -519,6 +523,7 @@ if __name__ == '__main__':
     category_name = args.root_category_name
     drive_name = args.drive_name
     metadata_profile_id = args.metadata_profile_id
+    google_credentials = args.google_credentials if args.google_credentials else 'credentials.json'
 
     """
     creds = None
@@ -542,7 +547,7 @@ if __name__ == '__main__':
 
     # Load client secrets for Google Drive API
     creds = service_account.Credentials.from_service_account_file(
-        './credentials.json', scopes=['https://www.googleapis.com/auth/drive.metadata.readonly', 'https://www.googleapis.com/auth/drive.readonly'])
+        google_credentials, scopes=['https://www.googleapis.com/auth/drive.metadata.readonly', 'https://www.googleapis.com/auth/drive.readonly'])
 
     try:
         threads = []
@@ -569,6 +574,7 @@ if __name__ == '__main__':
         csv_file_name = f'kaltura_upload-{args.folder_id}.csv'
         df.to_csv(csv_file_name, index=False, encoding='utf-8-sig')
         if(len(rows_list) > 0):
+            print("BULK ", len(rows_list))
             upload_bulk(csv_file_name)
         else:
             print("Nothing to bulk upload")
